@@ -15,13 +15,6 @@ async fn main() {
     let matches = Command::new(env!("CARGO_PKG_NAME"))
         .before_help(LOGO.as_str())
         // .about("guilty")
-        //         .help_template(
-        //             "\
-        // {before-help}
-        // {usage-heading}
-        //     {usage}
-        // {all-args}",
-        //         )
         .help_template("{before-help}{about}\n{usage-heading} {usage}\n\n{all-args}")
         .version(env!("CARGO_PKG_VERSION"))
         .arg(
@@ -145,7 +138,7 @@ async fn main() {
     debug!(format!("Silent: {}", SILENT));
 
     let total = std::time::Instant::now();
-    let sum: i64 = 0;
+    // let sum: i64 = 0;
     let client: Client = ClientBuilder::new()
         .user_agent(USER_AGENT)
         .build()
