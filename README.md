@@ -1,6 +1,6 @@
 # leukocyte
 
-Leukocyte is an orbital satellite request tool
+Leukocyte is a flood request tool
 
 <!-- Leukocyte was an orbital satellite laser in Guilty Crown -->
 
