@@ -1,8 +1,10 @@
 #![allow(non_snake_case)]
 #![allow(unused_variables)]
 
-use clap::{value_parser, Arg, Command, ValueSource};
+use clap::{value_parser, Arg, ArgAction, Command, ValueSource};
+use http::{header::HeaderName, HeaderMap, HeaderValue};
 use reqwest::{Client, ClientBuilder, Response};
+use std::str::FromStr;
 use text2art::{BasicFonts, Font, Printer};
 
 #[tokio::main]
@@ -57,7 +59,7 @@ async fn main() {
                 .takes_value(true)
                 .default_value("{}")
                 .hide_default_value(true)
-                .help("POST data"),
+                .help("Request data"),
         )
         .arg(
             Arg::new("silent")
@@ -72,6 +74,13 @@ async fn main() {
                 .long("verbose")
                 .action(clap::ArgAction::SetTrue)
                 .help("Make program more verbose"),
+        )
+        .arg(
+            Arg::new("noprefix")
+                .short('r')
+                .long("noprefix")
+                .action(clap::ArgAction::SetTrue)
+                .help("Remove prefix from verbose/debug logs"),
         )
         .arg(
             Arg::new("crowns")
@@ -93,7 +102,17 @@ async fn main() {
                 .hide_default_value(true)
                 .default_value("0"),
         )
-        .get_matches();
+        .arg(
+            Arg::new("header")
+                .action(ArgAction::Append)
+                .short('H')
+                .long("header")
+                .takes_value(true)
+                .help("Add header to request")
+                .value_parser(value_parser!(String)),
+        )
+        .get_matches()
+        .to_owned();
     let URL: &str = matches.get_one::<String>("url").unwrap();
     let METHOD: &str = matches.get_one::<String>("method").unwrap();
     let USER_AGENT: &str = matches.get_one::<String>("user_agent").unwrap();
@@ -102,22 +121,62 @@ async fn main() {
     let TIMEOUT: &u64 = matches.get_one::<u64>("timeout").unwrap();
 
     let VERBOSE: bool = matches.get_flag("verbose");
+    let NOPREFIX: bool = matches.get_flag("noprefix");
     let SILENT: bool = matches.get_flag("silent");
 
     macro_rules! debug {
         ($string: expr) => {
-            match VERBOSE {
-                true => println!("[{}] {}", env!("CARGO_PKG_NAME"), $string),
-                false => (),
+            match NOPREFIX {
+                true => match VERBOSE {
+                    true => println!("{}", $string),
+                    false => (),
+                },
+
+                false => match VERBOSE {
+                    true => println!("[{}] {}", env!("CARGO_PKG_NAME"), $string),
+                    false => (),
+                },
             }
         };
 
         ($string: expr, $verbosity: expr) => {
-            match $verbosity {
-                true => println!("[{}] { }", env!("CARGO_PKG_NAME"), $string),
-                false => (),
+            match NOPREFIX {
+                true => match $verbosity {
+                    true => println!("{}", $string),
+                    false => (),
+                },
+
+                false => match $verbosity {
+                    true => println!("[{}] {}", env!("CARGO_PKG_NAME"), $string),
+                    false => (),
+                },
             }
         };
+    }
+
+    let client_raw: ClientBuilder = ClientBuilder::new().user_agent(USER_AGENT);
+    let mut client_headers: HeaderMap = HeaderMap::new();
+
+    let mut headers: Vec<&str> = vec![];
+
+    if let Some(values) = matches.get_many::<String>("header") {
+        headers = values.map(|s| s.as_str()).collect::<Vec<_>>();
+    }
+
+    for header in headers {
+        let headerSplit: (&str, &str) = header.split_once(": ").expect(
+            "Header must follow 'Header: Value' format. (Include the whitespace after the colon)",
+        );
+
+        let headerName: &str = headerSplit.0;
+        let headerValue: &str = headerSplit.1;
+
+        debug!(format!("Header {:#?} : {:#?}", headerName, headerValue));
+
+        client_headers.insert(
+            HeaderName::from_str(headerName).unwrap(),
+            HeaderValue::from_str(headerValue).unwrap(),
+        );
     }
 
     debug!(format!("URL: {}", URL));
@@ -139,8 +198,10 @@ async fn main() {
 
     let total = std::time::Instant::now();
     // let sum: i64 = 0;
-    let client: Client = ClientBuilder::new()
+
+    let client: Client = client_raw
         .user_agent(USER_AGENT)
+        .default_headers(client_headers)
         .build()
         .unwrap()
         .to_owned();

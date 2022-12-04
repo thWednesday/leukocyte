@@ -5,7 +5,7 @@ Leukocyte is a flood request tool
 # Installation
 
 ```bash
-git clone https://github.com/arctich/leukocyte
+git clone https://github.com/nervegenesis/leukocyte
 cd leukocyte
 cargo install --path .
 ```

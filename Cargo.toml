@@ -8,5 +8,6 @@ clap = { version = "3.2.22", features = ["derive"] }
 text2art = { version = "1.0.1", features = []}
 
 reqwest = { version = "0.11", features = ["json"] }
+http = { version = "0.2.8", features = [] }
 tokio = { version = "1", features = ["full"] }
 ua_generator = { version = "0.3.2", features = [] }
